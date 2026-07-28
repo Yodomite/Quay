@@ -7,7 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
     "db:push": "drizzle-kit push",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@checkout/core": "workspace:*",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "drizzle-kit": "0.31.10",
-    "tsx": "4.22.4"
+    "tsx": "4.22.4",
+    "vitest": "4.1.9"
   }
 }

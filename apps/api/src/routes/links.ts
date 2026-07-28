@@ -39,6 +39,21 @@ export function linkRoutes(c: Container): Hono {
     }
   });
 
+  // Seller voids a link they created by mistake. Idempotent: cancelling an
+  // already-`cancelled` link is a successful no-op. Any state from which
+  // `cancelled` is not reachable is rejected with 409 (the on-chain payment
+  // must NOT be reversed client-side; the seller refunds out of band via the
+  // off-ramp / from their own wallet). No request body.
+  app.post("/:id/cancel", async (ctx) => {
+    try {
+      const link = await c.service.cancelLink(ctx.req.param("id"));
+      return ctx.json({ link });
+    } catch (err) {
+      if (err instanceof HttpError) return ctx.json({ error: err.message }, err.status as 404 | 409);
+      throw err;
+    }
+  });
+
   return app;
 }
 

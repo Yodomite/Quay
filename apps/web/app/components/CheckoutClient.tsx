@@ -6,11 +6,18 @@ import { api, type LinkWithRequest } from "../../lib/api";
 
 const SETTLED = new Set(["paid", "offramp_pending", "offramp_settled", "offramp_failed"]);
 
+// Terminal-but-not-paid: the link is dead — TTL elapsed (`expired`) or the
+// seller voided it (`cancelled`). Showing a live QR or "Waiting for payment…"
+// here would be a merchant-visible lie.
+const TERMINAL = new Set(["expired", "cancelled"]);
+
 export default function CheckoutClient({ initial }: { initial: LinkWithRequest }) {
   const { request } = initial;
   const [link, setLink] = useState(initial.link);
 
-  const done = SETTLED.has(link.status);
+  const settled = SETTLED.has(link.status);
+  const dead = TERMINAL.has(link.status);
+  const done = settled || dead;
 
   useEffect(() => {
     if (done) return;
@@ -26,7 +33,29 @@ export default function CheckoutClient({ initial }: { initial: LinkWithRequest }
     return () => clearInterval(t);
   }, [link.id, done]);
 
-  if (done) {
+  if (dead) {
+    return (
+      <div className="checkout">
+        <div
+          className="settled-check"
+          aria-hidden
+          style={{ background: "rgba(232, 115, 107, 0.12)", color: "#e8736b" }}
+        >
+          ✕
+        </div>
+        <div className="settled" style={{ color: "#e8736b" }}>
+          This link is no longer active
+        </div>
+        <p className="muted" style={{ marginTop: 8 }}>
+          {link.status === "expired"
+            ? "The payment window has closed. Ask the merchant for a fresh link."
+            : "This link was cancelled by the merchant. Ask them for a new one."}
+        </p>
+      </div>
+    );
+  }
+
+  if (settled) {
     return (
       <div className="checkout">
         <div className="settled-check" aria-hidden>✓</div>

@@ -54,6 +54,13 @@ export class WatcherLoop {
   }
 
   async runOnce(): Promise<void> {
+    // Payment matching runs FIRST so a buyer who submitted within TTL but whose
+    // on-chain confirmation lands after the deadline still settles as `paid`
+    // (vs. being rejected because we already flipped the link to `expired`).
+    // The expiry sweep runs AFTER — all `active`/`underpaid` links with
+    // `expiresAt < now` flip to `expired` and fire `link.expired`. In the
+    // next tick, `activeDestinations()` no longer lists them so we stop
+    // polling Horizon for those accounts.
     const accounts = await this.deps.links.activeDestinations();
     for (const account of accounts) {
       try {
@@ -61,6 +68,13 @@ export class WatcherLoop {
       } catch (err) {
         this.deps.log?.(`watcher account ${short(account)} error: ${stringifyErr(err)}`);
       }
+    }
+
+    try {
+      const moved = await this.deps.service.sweepExpired(Date.now());
+      if (moved > 0) this.deps.log?.(`expiry sweep moved ${moved} link(s) to expired`);
+    } catch (err) {
+      this.deps.log?.(`expiry sweep error: ${stringifyErr(err)}`);
     }
   }
 
@@ -98,6 +112,28 @@ export class WatcherLoop {
           `payment ${short(payment.txHash)} -> ${outcome.kind}` +
             (becamePaid ? ` (link ${linkId} PAID)` : ""),
         );
+      } else if (
+        outcome.kind === "unknown_reference" &&
+        payment.memo &&
+        payment.memoType !== "none"
+      ) {
+        // Memo matched nothing in the OPEN set. Before we give up, check
+        // whether the memo belongs to a link that *used to* be open but has
+        // since been expired or cancelled by the seller. If so, the buyer
+        // paid a dead link: do NOT resurrect it, fire payment.unmatched so
+        // the seller can refund the buyer out-of-band.
+        const terminal = await this.deps.links.findByReference(payment.memo);
+        if (
+          terminal &&
+          terminal.destination === account &&
+          (terminal.status === "expired" || terminal.status === "cancelled")
+        ) {
+          await this.deps.service.recordUnmatchedPayment(payment, terminal);
+          this.deps.log?.(
+            `payment ${short(payment.txHash)} -> unmatched against ` +
+              `${terminal.status} link ${terminal.id}`,
+          );
+        }
       }
 
       await this.deps.state.markProcessed(payment.txHash, linkId);

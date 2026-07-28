@@ -116,6 +116,75 @@ export class LinkService {
     return false; // no_memo / unknown_reference / asset_mismatch — nothing to apply
   }
 
+  /**
+   * Seller voids a link they created by mistake.
+   *
+   * Idempotent: cancelling an already-`cancelled` link returns the link unchanged
+   * (no double-fire of the webhook). Any state from which `cancelled` is not
+   * reachable (paid, off-ramp in flight, off-ramp settled, off-ramp failed,
+   * already expired) is rejected with 409. 404 if the id is unknown.
+   */
+  async cancelLink(id: string): Promise<PaymentLink> {
+    const link = await this.deps.links.findById(id);
+    if (!link) throw new HttpError(404, "Link not found");
+
+    // Idempotent: already cancelled -> no-op success, no second webhook.
+    if (link.status === "cancelled") return link;
+
+    if (!canTransition(link.status, "cancelled")) {
+      throw new HttpError(409, `Link cannot be cancelled (is "${link.status}")`);
+    }
+
+    link.status = "cancelled";
+    await this.deps.links.save(link);
+    await this.fireWebhook(link, "link.cancelled", {});
+    return link;
+  }
+
+  /**
+   * Move any TTL'd link whose `expiresAt` is in the past to `expired`.
+   *
+   * Respects `canTransition`: only `active` and `underpaid` can become `expired`
+   * (the transition table forbids everything else — paid and the off-ramp
+   * states stay as-is). Idempotent across runs: a link already `expired` has
+   * `status === "expired"` which fails the OPEN filter and is skipped.
+   *
+   * Returns the number of links flipped this sweep, so the caller can decide
+   * whether to log. `now` is injected so tests can drive the clock.
+   */
+  async sweepExpired(now: number): Promise<number> {
+    const seller = await this.deps.sellers.getDefault();
+    const all = await this.deps.links.listBySeller(seller.id);
+    let moved = 0;
+    for (const link of all) {
+      if (link.status !== "active" && link.status !== "underpaid") continue;
+      if (link.expiresAt === null || link.expiresAt >= now) continue;
+      if (!canTransition(link.status, "expired")) continue; // defense in depth
+      link.status = "expired";
+      await this.deps.links.save(link);
+      await this.fireWebhook(link, "link.expired", { expiresAt: link.expiresAt });
+      moved++;
+    }
+    return moved;
+  }
+
+  /**
+   * A payment matched the memo of a link that is no longer open (expired or
+   * cancelled). The link must not be resurrected — record the payment as
+   * unmatched so the seller can refund the buyer out-of-band.
+   *
+   * The receiving link is included so the webhook payload carries the link
+   * context the seller needs to identify the buyer and refund.
+   */
+  async recordUnmatchedPayment(payment: NormalizedPayment, link: PaymentLink): Promise<void> {
+    await this.fireWebhook(link, "payment.unmatched", {
+      payer: payment.from,
+      paymentAmount: payment.amount,
+      paymentAsset: payment.asset,
+      paymentTxHash: payment.txHash,
+    });
+  }
+
   /** Seller-initiated cash-out: quote -> initiate -> move link to offramp_pending. */
   async triggerCashOut(linkId: string, body: CashOutBody): Promise<OffRampJob> {
     const link = await this.deps.links.findById(linkId);
