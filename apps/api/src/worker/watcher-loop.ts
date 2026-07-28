@@ -5,7 +5,7 @@ import {
   type WatcherPort,
   type WatcherStateRepository,
 } from "@checkout/core";
-import type { LinkService } from "../services/link-service";
+import { AnchorHealth, type LinkService } from "../services/link-service";
 
 /**
  * Polling settlement watcher.
@@ -113,6 +113,31 @@ export function startCashOutPoller(service: LinkService, intervalMs: number): ()
     void service.pollCashOuts().catch(() => {});
   }, intervalMs);
   return () => clearInterval(timer);
+}
+
+/**
+ * Periodically run the anchor health probe. First probe runs immediately so
+ * the breaker state is correct on first request rather than after one interval
+ * has elapsed. Probe failures never throw; AnchorHealth records every outcome.
+ */
+export function startAnchorProbeTimer(health: AnchorHealth, intervalMs: number): () => void {
+  let stopped = false;
+  let timer: NodeJS.Timeout | null = null;
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      await health.probe();
+    } catch {
+      // AnchorHealth.probe() is contractually non-throwing; defensive only.
+    }
+    if (!stopped) timer = setTimeout(tick, intervalMs);
+  };
+  void tick();
+  return () => {
+    stopped = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+  };
 }
 
 function short(s: string): string {
