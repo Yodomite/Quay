@@ -1,0 +1,16 @@
+stateDiagram-v2
+  [*] --> active
+  active --> paid
+  active --> underpaid
+  active --> expired
+  active --> cancelled
+  underpaid --> paid
+  underpaid --> expired
+  underpaid --> cancelled
+  paid --> offramp_pending
+  offramp_pending --> offramp_settled
+  offramp_pending --> offramp_failed
+  offramp_failed --> offramp_pending
+  offramp_settled --> [*]
+  expired --> [*]
+  cancelled --> [*]

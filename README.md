@@ -1,5 +1,8 @@
 # Stellar Checkout
 
+[![CI](https://github.com/chris-ostrovskis/Quay/actions/workflows/ci.yml/badge.svg)](https://github.com/chris-ostrovskis/Quay/actions/workflows/ci.yml)
+[![Anchor Probe](https://github.com/chris-ostrovskis/Quay/actions/workflows/anchor-probe.yml/badge.svg)](https://github.com/chris-ostrovskis/Quay/actions/workflows/anchor-probe.yml)
+
 Non-custodial stablecoin **checkout + payment links** on Stellar, with a deliberately
 **swappable off-ramp seam** so the seller can later cash out to local currency without a rewrite.
 
@@ -8,6 +11,11 @@ Non-custodial stablecoin **checkout + payment links** on Stellar, with a deliber
 testnet wallet with the shown memo, and watch it flip to **paid**. Cash-out runs
 a real SEP-10 → SEP-38 → SEP-6 flow against `testanchor.stellar.org` (USD quotes;
 testnet only, no real money moves).
+
+[![API uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-api.json)](docs/STATUS.md)
+[![Web uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-web.json)](docs/STATUS.md)
+[![Synthetic check](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-synthetic.json)](docs/STATUS.md)
+Checked every 5 minutes — see [`docs/STATUS.md`](docs/STATUS.md) for the last 90 days.
 
 The loop, end to end:
 
@@ -100,6 +108,7 @@ Useful scripts (from the repo root):
 pnpm typecheck   # all packages
 pnpm test        # core unit tests
 pnpm build       # builds the web app
+pnpm sweep       # pre-entry ritual: uptime + synthetic checks against the live demo
 ```
 
 ---
@@ -139,6 +148,7 @@ pnpm build       # builds the web app
 
 ## Docs & contributing
 
+- **[Architecture](docs/ARCHITECTURE.md)** — package graph, the three ports, sequence diagrams for each flow, the status machine, and how to add a new chain/anchor/rail.
 - **[HTTP API reference](docs/API.md)** — endpoints, request/response shapes, and webhook delivery.
 - **[Contributing](CONTRIBUTING.md)** — setup, the check suite, and PR guidelines.
 - **[Security policy](SECURITY.md)** — how to report a vulnerability privately.

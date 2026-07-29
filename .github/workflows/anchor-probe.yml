@@ -1,0 +1,139 @@
+name: anchor-probe
+
+on:
+  schedule:
+    # Nightly at 04:00 UTC — a quiet window for the testanchor sandbox.
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: SEP-1 → SEP-10 → SEP-38 → SEP-6 live probe
+        id: probe
+        continue-on-error: true
+        env:
+          RUN_LIVE_ANCHOR_TESTS: "1"
+          SELLER_SECRET_KEY: ${{ secrets.TEST_ANCHOR_SELLER_SECRET }}
+        run: |
+          pnpm --filter @checkout/offramp test --reporter=verbose 2>&1 | tee probe-output.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=${EXIT_CODE}" >> "$GITHUB_OUTPUT"
+          exit ${EXIT_CODE}
+
+      - name: Publish telemetry summary
+        if: always()
+        run: |
+          TELEMETRY="packages/offramp/probe-telemetry.json"
+          {
+            echo "## Anchor Probe Telemetry"
+            echo ""
+            echo "| Metric | Value |"
+            echo "| --- | --- |"
+
+            if [ -f "${TELEMETRY}" ]; then
+              RATE=$(jq -r '.rate // "N/A"' "${TELEMETRY}")
+              QUOTE_LATENCY=$(jq -r '.quoteLatencyMs // "N/A"' "${TELEMETRY}")
+              WITHDRAW_LATENCY=$(jq -r '.withdrawLatencyMs // "N/A"' "${TELEMETRY}")
+              echo "| Quoted rate (USDC→USD) | ${RATE} |"
+              echo "| SEP-38 quote latency | ${QUOTE_LATENCY}ms |"
+              echo "| SEP-6 status poll latency | ${WITHDRAW_LATENCY}ms |"
+            else
+              echo "| Status | No telemetry emitted (probe may have failed before measurement) |"
+            fi
+
+            echo ""
+            echo "**Probe exit code:** ${{ steps.probe.outputs.exit_code }}"
+            echo ""
+            echo "Anchor: https://testanchor.stellar.org"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload probe artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: probe-results
+          path: |
+            probe-output.txt
+            packages/offramp/probe-telemetry.json
+          retention-days: 7
+
+      - name: Report success
+        if: steps.probe.outputs.exit_code == '0'
+        run: |
+          echo "✅ Anchor probe passed — all SEP flows operational against testanchor.stellar.org" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open or update failure issue
+        if: steps.probe.outputs.exit_code != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const label = "anchor-probe";
+            const issueTitle = "⚠️ Nightly anchor probe failed";
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+
+            const body = `The nightly [anchor probe](${runUrl}) against \`testanchor.stellar.org\` failed.
+
+            ### What broke
+            The SEP-1 → SEP-10 → SEP-38 → SEP-6 live flow is not completing successfully. Check the [failed run](${runUrl}) for details.
+
+            ### Impact
+            - The testanchor sandbox off-ramp demo may be broken.
+            - The checkout cash-out flow is **unverified** until the probe passes again.
+
+            ### Next steps
+            1. Review the [workflow run logs](${runUrl}).
+            2. Check whether \`testanchor.stellar.org\` is reachable and its API paths are unchanged.
+            3. Rotate the test keypair if necessary (\`TEST_ANCHOR_SELLER_SECRET\`).
+
+            _This issue was auto-filed by the [anchor-probe workflow](https://github.com/${process.env.GITHUB_REPOSITORY}/actions/workflows/anchor-probe.yml)._`;
+
+            // Find an existing open issue with the anchor-probe label.
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: label,
+              state: "open",
+              per_page: 5,
+            });
+
+            const existing = issues.find(i => i.title === issueTitle);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Probe failed again on ${new Date().toISOString()}. [View run](${runUrl}).`,
+              });
+              core.info(`Added failure comment to existing issue #${existing.number}`);
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body,
+                labels: [label],
+              });
+              core.info("Created new failure issue");
+            }

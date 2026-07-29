@@ -1,0 +1,72 @@
+name: uptime
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: uptime
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run checks
+        id: uptime
+        run: |
+          node scripts/uptime-check.mjs | tee /tmp/uptime.log
+          {
+            echo "events<<EOF"
+            grep '^EVENTS_JSON=' /tmp/uptime.log | sed 's/^EVENTS_JSON=//' || true
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Commit updated status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/uptime-state.json docs/STATUS.md docs/uptime-badge-*.json
+          git diff --cached --quiet || git commit -m "chore(uptime): update status [skip ci]"
+          git push
+
+      - name: Alert on state changes
+        if: steps.uptime.outputs.events != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENTS: ${{ steps.uptime.outputs.events }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          gh label create incident --repo "$GITHUB_REPOSITORY" --color "B60205" \
+            --description "Uptime check failed twice in a row" --force >/dev/null 2>&1 || true
+
+          echo "$EVENTS" | jq -c '.[]' | while read -r event; do
+            type=$(echo "$event" | jq -r '.type')
+            target=$(echo "$event" | jq -r '.target')
+            label_text=$(echo "$event" | jq -r '.label')
+            title="🔴 Uptime: $label_text is down"
+
+            existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --label incident --search "in:title \"$title\"" --json number --jq '.[0].number // empty')
+
+            if [ "$type" = "failed" ] && [ -z "$existing" ]; then
+              gh issue create --repo "$GITHUB_REPOSITORY" \
+                --title "$title" \
+                --label incident \
+                --assignee "$REPO_OWNER" \
+                --body "Two consecutive uptime checks for **$label_text** ($target) have failed. See [docs/STATUS.md](${{ github.server_url }}/${{ github.repository }}/blob/main/docs/STATUS.md) and the [uptime workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+            elif [ "$type" = "recovered" ] && [ -n "$existing" ]; then
+              gh issue comment --repo "$GITHUB_REPOSITORY" "$existing" --body "Recovered — the last check for **$label_text** passed."
+              gh issue close --repo "$GITHUB_REPOSITORY" "$existing"
+            fi
+          done

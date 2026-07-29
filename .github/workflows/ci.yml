@@ -28,6 +28,12 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Docs — status diagram hasn't drifted from status.ts
+        run: pnpm docs:check-status-diagram
+
+      - name: Docs — domain boundary (packages/core stays chain-agnostic)
+        run: pnpm docs:check-domain-boundary
+
       - name: Build
         run: pnpm build
         env:

@@ -1,25 +1,26 @@
-import { Horizon } from "@stellar/stellar-sdk";
 import type { NormalizedPayment, WatcherPort } from "@checkout/core";
 import { normalizePayment } from "./normalize";
+import { type HorizonClient, isNotFound, realHorizonClient } from "./horizon-client";
 
 /**
  * Polling implementation of WatcherPort over Horizon.
  *
  * Polling (vs streaming) is deliberate for the MVP: it is restart-safe with a
- * persisted cursor and trivial to reason about. A streaming impl can satisfy the
- * same interface later without touching the domain or the worker loop.
+ * persisted cursor and trivial to reason about. `StreamingHorizonWatcher`
+ * satisfies the same interface for the WATCH_MODE=stream path.
  */
 export class HorizonWatcher implements WatcherPort {
-  private readonly server: Horizon.Server;
+  private readonly client: HorizonClient;
 
-  constructor(horizonUrl: string) {
-    this.server = new Horizon.Server(horizonUrl);
+  constructor(horizonUrlOrClient: string | HorizonClient) {
+    this.client =
+      typeof horizonUrlOrClient === "string" ? realHorizonClient(horizonUrlOrClient) : horizonUrlOrClient;
   }
 
   /** Newest payment paging-token for an account, used to seed a fresh watch. */
   async latestCursor(account: string): Promise<string | null> {
     try {
-      const page = await this.server
+      const page = await this.client
         .payments()
         .forAccount(account)
         .order("desc")
@@ -37,7 +38,7 @@ export class HorizonWatcher implements WatcherPort {
    *  Includes both directions; the matcher gates correctness on destination,
    *  and the worker advances the cursor by the last token returned here. */
   async fetchSince(account: string, cursor: string, limit = 200): Promise<NormalizedPayment[]> {
-    let builder = this.server.payments().forAccount(account).order("asc").limit(limit);
+    let builder = this.client.payments().forAccount(account).order("asc").limit(limit);
     if (cursor) builder = builder.cursor(cursor);
 
     let page;
@@ -55,9 +56,4 @@ export class HorizonWatcher implements WatcherPort {
     }
     return out;
   }
-}
-
-function isNotFound(err: unknown): boolean {
-  const e = err as { response?: { status?: number }; name?: string };
-  return e?.response?.status === 404 || e?.name === "NotFoundError";
 }
