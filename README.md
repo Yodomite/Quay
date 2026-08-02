@@ -1,13 +1,20 @@
 # Stellar Checkout
 
-Non-custodial stablecoin **checkout + payment links** on Stellar, with a deliberately
-**swappable off-ramp seam** so the seller can later cash out to local currency without a rewrite.
+[![CI](https://github.com/determined-001/Quay/actions/workflows/ci.yml/badge.svg)](https://github.com/determined-001/Quay/actions/workflows/ci.yml)
+[![Anchor Probe](https://github.com/determined-001/Quay/actions/workflows/anchor-probe.yml/badge.svg)](https://github.com/determined-001/Quay/actions/workflows/anchor-probe.yml)
+
+Stellar Checkout is the open-source, non-custodial merchant checkout for the Stellar anchor network — the inbound counterpart to the Stellar Disbursement Platform.
 
 **Live demo (Stellar testnet):** [dashboard](https://quay-web.vercel.app) ·
 [API](https://quay-api.onrender.com/health) — create a link, pay it from any
 testnet wallet with the shown memo, and watch it flip to **paid**. Cash-out runs
 a real SEP-10 → SEP-38 → SEP-6 flow against `testanchor.stellar.org` (USD quotes;
 testnet only, no real money moves).
+
+[![API uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-api.json)](docs/STATUS.md)
+[![Web uptime](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-web.json)](docs/STATUS.md)
+[![Synthetic check](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/determined-001/Quay/main/docs/uptime-badge-synthetic.json)](docs/STATUS.md)
+Checked every 5 minutes — see [`docs/STATUS.md`](docs/STATUS.md) for the last 90 days.
 
 The loop, end to end:
 
@@ -21,6 +28,79 @@ The loop, end to end:
 
 This is the non-custodial version of a hosted checkout (think Stripe-style PaymentIntent),
 built on the chain whose anchor network can actually settle to local rails.
+
+---
+
+## Quickstart (5-Minute Integration)
+
+### 1. Install the Widget
+Embed the lightweight modal checkout script tag in your HTML and attach it to any button:
+
+```html
+<!-- Include widget script -->
+<script src="https://quay-web.vercel.app/widget.js"></script>
+
+<!-- Pay button bound to link ID -->
+<button data-stellar-checkout="lnk_123">Pay with USDC</button>
+
+<!-- Or trigger programmatically in JavaScript -->
+<script>
+  StellarCheckout.open("lnk_123");
+</script>
+```
+
+### 2. Create a Link via API
+Generate a payment link from your backend server:
+
+```bash
+curl -X POST https://quay-api.onrender.com/links \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "T-shirt",
+    "amount": "10.50",
+    "assetCode": "USDC"
+  }'
+```
+
+**Response (201 Created):**
+```json
+{
+  "link": {
+    "id": "lnk_123",
+    "reference": "ref_abc",
+    "status": "pending",
+    "title": "T-shirt",
+    "amount": "10.50",
+    "asset": { "code": "USDC", "issuer": "GBBD456..." },
+    "destination": "GAHK789..."
+  },
+  "request": {
+    "uri": "web+stellar:pay?destination=GAHK789...&amount=10.50&memo=ref_abc",
+    "memo": "ref_abc",
+    "memoType": "text"
+  }
+}
+```
+
+### 3. Receive the Webhook
+Register your endpoint to receive real-time JSON notifications when payments land on-chain:
+
+```bash
+curl -X POST https://quay-api.onrender.com/webhooks \
+  -H "Content-Type: application/json" \
+  -d '{ "url": "https://your-domain.com/api/webhooks/checkout" }'
+```
+
+Verify incoming HMAC-SHA256 signatures (`x-checkout-signature: sha256=<hex>`) in your webhook route:
+
+```javascript
+const crypto = require("crypto");
+
+function verifyWebhookSignature(rawBody, signatureHeader, secret) {
+  const expected = "sha256=" + crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader));
+}
+```
 
 ---
 
@@ -57,7 +137,7 @@ packages/
   offramp/     Off-ramp adapter — MockAnchorOffRamp (OffRampPort, seller_initiated).  *** mock ***
 apps/
   api/         Hono API + Drizzle (libSQL) + the ledger-watching worker.
-  web/         Next.js (App Router) seller dashboard + buyer checkout page.
+  web/         Next.js (App Router) seller dashboard + buyer checkout page + widget.js.
 ```
 
 `core` is the only package with business logic worth unit-testing in isolation, and it is:
@@ -100,6 +180,7 @@ Useful scripts (from the repo root):
 pnpm typecheck   # all packages
 pnpm test        # core unit tests
 pnpm build       # builds the web app
+pnpm sweep       # pre-entry ritual: uptime + synthetic checks against the live demo
 ```
 
 ---
@@ -109,11 +190,14 @@ pnpm build       # builds the web app
 | Piece | Status |
 | --- | --- |
 | SEP-7 payment-request URIs | **Real**, spec-correct (native vs issued asset, memo ≤28 bytes, %20 encoding, network passphrase). |
-| Horizon payment watching + memo matching | **Real** logic against the Stellar SDK v16 API. Polling (restart-safe), idempotent via persisted cursor + processed-tx ledger. |
+| Horizon payment watching + memo matching | **Real** logic against the Stellar SDK v16 API. Polling (restart-safe), idempotent via persisted cursor + processed-tx ledger. One Horizon request per page (`join=transactions` for the memo lookup, not one-plus-N), and a transaction-fetch failure retries the tick rather than silently parking a matchable payment as `no_memo`. Every Horizon call retries transient failures (3 attempts, exponential backoff + full jitter, honors `Retry-After` on 429) and can fail over to `HORIZON_URL_FALLBACK`; sustained failure shows up in `GET /health` instead of silently going idle. |
 | Status lifecycle, webhooks (HMAC-SHA256 signed) | **Real**. |
+| Account/trustline preflight | **Real.** `POST /links` checks the seller's wallet actually exists and (for USDC) has an authorized, under-limit trustline before the link goes live — `422 destination_cannot_receive` otherwise, with a SEP-7 deep link to add the trustline. Re-checked in `GET /health` so a revoked trustline shows up in ops, not as a dead checkout page. |
 | Persistence | **Real**, libSQL/SQLite for zero-config local dev (swap the `DATABASE_URL` for Turso/Postgres). Tables self-initialize on boot. |
 | Off-ramp (`@checkout/offramp`) | **Real, opt-in.** Set `OFFRAMP=testanchor` for a genuine SEP-10 → SEP-38 → SEP-6 flow against the public Stellar testnet anchor (`https://testanchor.stellar.org`). Defaults to `OFFRAMP=mock` (`MockAnchorOffRamp`, fake FX rate, no money moves) for offline dev — the dashboard labels the cash-out button "(simulated)" whenever mock mode is active. |
-| Auth | **Not implemented.** Single hard-coded demo seller, no API keys / login. Fine for a demo, not for production. |
+| Metrics | **Real.** `GET /metrics` (Prometheus text format, `METRICS_TOKEN`-gated) — payment/webhook/anchor counters, watcher-lag and latency histograms, a circuit breaker around the off-ramp adapter. See [`docs/API.md`](docs/API.md#get-metrics) and [`docs/grafana-dashboard.json`](docs/grafana-dashboard.json). |
+| Embeddable widget (`/widget.js`) | **Real**, lightweight embeddable script rendering modal checkout. |
+| Auth | **Real, and enforced.** SEP-10 wallet login (`GET/POST /auth`) issues a short-lived session JWT (`sub`, `sellerId`, `jti`, `exp` ≤ 24h) and sets it as an httpOnly cookie; `requireSeller` middleware gates every `/links` and `/webhooks` route (401 unauthenticated, 403 wrong seller), `POST /auth/logout` revokes a token by `jti`. **No web UI exists yet to actually log in** (needs a wallet-connect button — separate issue) — the demo dashboard needs that wired up before it can create/list links post-upgrade. See [`docs/API.md`](docs/API.md#authentication). |
 
 ---
 
@@ -128,7 +212,11 @@ pnpm build       # builds the web app
    for a production adapter against a licensed Nigerian anchor's SEP endpoints, and validate the
    anchor will actually onboard you and pay out **before** building further.
 3. **Don't enable `inline` off-ramp without legal review.** See the boundary note above.
-4. **Add auth** (API keys per seller + a real login) before anyone but you touches it.
+4. **Build the wallet-connect UI.** SEP-10 login + session enforcement are both
+   real now (`/auth`, `requireSeller` on `/links` and `/webhooks`), but there's
+   no button anywhere to actually sign in — that needs a wallet-connect
+   integration (Stellar Wallets Kit or similar) calling `apps/web/lib/api.ts`'s
+   `getAuthChallenge`/`submitAuthChallenge`. Add API keys for programmatic access.
 5. **Multiple sellers / scale:** the watcher polls per active destination account; for many
    sellers you may want a streaming `WatcherPort` implementation (the interface already allows it).
 
@@ -139,7 +227,10 @@ pnpm build       # builds the web app
 
 ## Docs & contributing
 
+- **[Architecture](docs/ARCHITECTURE.md)** — package graph, the three ports, sequence diagrams for each flow, the status machine, and how to add a new chain/anchor/rail.
+- **[Triage & review SLAs](docs/TRIAGE.md)** — issue taxonomy, 48h labelling SLA, and the stale-issue policy.
 - **[HTTP API reference](docs/API.md)** — endpoints, request/response shapes, and webhook delivery.
+- **[SCF Build proposal](docs/PROPOSAL.md)** — the problem, the wedge, milestones, budget, traction, and risk register.
 - **[Contributing](CONTRIBUTING.md)** — setup, the check suite, and PR guidelines.
 - **[Security policy](SECURITY.md)** — how to report a vulnerability privately.
 - **[Code of conduct](CODE_OF_CONDUCT.md)**.

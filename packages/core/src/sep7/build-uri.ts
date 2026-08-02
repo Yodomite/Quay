@@ -35,8 +35,10 @@ function enc(value: string): string {
 export function buildSep7PayUri(params: Sep7PayParams): string {
   const { destination, amount, asset, memo, memoType = "MEMO_TEXT", message, networkPassphrase } = params;
 
-  if (!destination.startsWith("G") || destination.length !== 56) {
-    throw new Error(`SEP-7: destination must be a 56-char G-address, got "${destination}"`);
+  const isGAddress = destination.startsWith("G") && destination.length === 56;
+  const isMAddress = destination.startsWith("M") && destination.length === 69; // SEP-23 muxed
+  if (!isGAddress && !isMAddress) {
+    throw new Error(`SEP-7: destination must be a G-address or M-address, got "${destination}"`);
   }
   if (amount !== undefined && !isValidAmount(amount)) {
     throw new Error(`SEP-7: invalid amount "${amount}"`);

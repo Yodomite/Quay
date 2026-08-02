@@ -13,7 +13,7 @@ export interface PaymentRequest {
   destination: string;
   amount: string;
   asset: AssetRef;
-  memo: string; // correlation reference echoed back on-chain
+  memo: string | null; // correlation reference echoed back on-chain; null in muxed mode
 }
 
 export interface RailPort {
@@ -23,11 +23,42 @@ export interface RailPort {
     amount: string;
     asset: AssetRef;
     reference: string;
+    /** SEP-23 muxed id. When present, the rail encodes it into an M-address
+     *  destination and omits the memo instead of using MEMO_TEXT correlation. */
+    muxedId?: string | null;
     message?: string;
   }): PaymentRequest;
 
   /** Validate that a string is a usable destination address for this rail. */
   isValidDestination(address: string): boolean;
+
+  /**
+   * Throws `CannotReceiveError` if `account` cannot currently receive `asset` —
+   * the account doesn't exist yet, or (for issued assets) has no trustline, an
+   * unauthorized one, or one already at its limit. Resolves silently if it can.
+   * Implementations should cache a short TTL per (account, asset) so calling
+   * this on every link creation stays cheap.
+   */
+  assertCanReceive(account: string, asset: AssetRef): Promise<void>;
+}
+
+export type CannotReceiveReason =
+  | "account_not_found" // not yet created/funded on-chain
+  | "no_trustline" // issued asset, no trustline established
+  | "trustline_not_authorized" // trustline exists but the issuer froze/deauthorized it
+  | "trustline_limit_exceeded"; // trustline exists but is already full
+
+/** Raised by `RailPort.assertCanReceive`. `trustlineUri` (when present) is a
+ *  rail-specific "fix it" deep link — e.g. a SEP-7 `tx` URI wrapping an unsigned
+ *  changeTrust operation the seller's wallet can sign directly. */
+export class CannotReceiveError extends Error {
+  constructor(
+    readonly reason: CannotReceiveReason,
+    message: string,
+    readonly trustlineUri?: string,
+  ) {
+    super(message);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -74,7 +105,9 @@ export interface OffRampQuote {
 /** Where the seller wants their local-currency payout to land. */
 export interface SellerPayoutRef {
   currency: string; // "NGN"
-  // Opaque to the domain; an anchor adapter interprets these (bank/account, etc.).
+  // Opaque to the domain; an anchor adapter interprets these (bank/account,
+  // routing, etc.). NOT identity/KYC data — that's `KycPort`, submitted once
+  // per seller ahead of time, never derived from a cash-out request.
   fields: Record<string, string>;
 }
 
@@ -92,9 +125,130 @@ export interface OffRampJob {
 
 export interface OffRampPort {
   readonly mode: OffRampMode;
-  quote(input: { sourceAsset: AssetRef; sourceAmount: string; targetCurrency: string }): Promise<OffRampQuote>;
+  quote(input: {
+    linkId: string;
+    sourceAsset: AssetRef;
+    sourceAmount: string;
+    targetCurrency: string;
+  }): Promise<OffRampQuote>;
   initiate(input: { linkId: string; quoteId: string; payout: SellerPayoutRef }): Promise<OffRampJob>;
+  /** Throws {@link OffRampJobNotFoundError} when `jobId` has no known state — a
+   *  crash/redeploy wiped an in-memory-only implementation, or the id is bogus. */
   status(jobId: string): Promise<OffRampJob>;
+}
+
+/** Typed miss for {@link OffRampPort.status}, so callers (the cash-out poller)
+ *  can tell "this job's state is genuinely gone" apart from a transient
+ *  network/anchor error and act on it — see `OffRampStateRepository`. */
+export class OffRampJobNotFoundError extends Error {
+  constructor(readonly jobId: string) {
+    super(`Unknown off-ramp job: ${jobId}`);
+    this.name = "OffRampJobNotFoundError";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Off-ramp state persistence
+// ---------------------------------------------------------------------------
+// Quotes and jobs are money-adjacent state: a cash-out sits in `offramp_pending`
+// for real seconds-to-days while an anchor settles it, so this cannot live only
+// in an adapter's in-process Map — a restart must not strand the seller's money.
+
+export interface StoredOffRampQuote {
+  quoteId: string;
+  linkId: string;
+  sellAsset: AssetRef;
+  sellAmount: string;
+  buyCurrency: string;
+  price: string;
+  expiresAt: number;
+  createdAt: number;
+}
+
+export interface StoredOffRampJob {
+  jobId: string;
+  linkId: string;
+  anchor: string; // which OffRampPort adapter owns this job, e.g. "mock" | "testanchor"
+  targetCurrency: string;
+  targetAmount: string;
+  rate: string;
+  status: OffRampJobStatus;
+  externalStatus: string | null; // raw upstream status string, for debugging
+  lastError: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface OffRampStateRepository {
+  saveQuote(quote: StoredOffRampQuote): Promise<void>;
+  getQuote(quoteId: string): Promise<StoredOffRampQuote | null>;
+  saveJob(job: StoredOffRampJob): Promise<void>;
+  getJob(jobId: string): Promise<StoredOffRampJob | null>;
+  updateJob(
+    jobId: string,
+    patch: Partial<Pick<StoredOffRampJob, "targetAmount" | "status" | "externalStatus" | "lastError">>,
+  ): Promise<void>;
+}
+
+// ---------------------------------------------------------------------------
+// KYC port (SEP-12)
+// ---------------------------------------------------------------------------
+// No real anchor will pay out against fabricated identity data, so this is
+// modeled as its own lifecycle — separate from a cash-out request — keyed by
+// seller, never by link: one seller can hold many links, but their identity
+// is submitted once and reused. `seller_initiated` mode still needs it for
+// the anchor's own compliance requirements, even though custody never moves
+// through us.
+
+export type KycStatus = "unsubmitted" | "NEEDS_INFO" | "PROCESSING" | "ACCEPTED" | "REJECTED";
+
+export interface KycFieldSpec {
+  name: string; // e.g. "first_name"
+  type: string; // anchor-defined: "string" | "date" | "binary" | "number" | ...
+  description?: string;
+  optional: boolean;
+  choices?: string[];
+}
+
+export interface KycRecord {
+  sellerId: string;
+  /** Anchor-assigned customer id, once one exists — reused on later GET/PUT
+   *  calls instead of re-resolving by account, per SEP-12. */
+  customerId: string | null;
+  status: KycStatus;
+  /** Latest field requirements discovered from the anchor. Empty once ACCEPTED. */
+  requiredFields: KycFieldSpec[];
+  /** Values we have on file for this seller. PII — never log, never put on a
+   *  webhook payload or a `/links` response; encrypted at rest by the repo. */
+  providedFields: Record<string, string>;
+  /** Anchor's status/rejection message, verbatim. */
+  message: string | null;
+  lastSyncedAt: number | null;
+  updatedAt: number;
+}
+
+/** Thrown by {@link KycPort.submit} when required fields are missing, naming
+ *  exactly which ones — the API layer maps this to `422 kyc_required`. */
+export class KycRequiredError extends Error {
+  constructor(readonly missingFields: string[]) {
+    super(`Missing required KYC fields: ${missingFields.join(", ")}`);
+    this.name = "KycRequiredError";
+  }
+}
+
+export interface KycPort {
+  /** Refreshes from the anchor (if applicable) and persists the result. */
+  status(sellerId: string): Promise<KycRecord>;
+  /** Submits/updates fields. Throws {@link KycRequiredError} if a required
+   *  field is still missing after merging with what's already on file. */
+  submit(sellerId: string, fields: Record<string, string>): Promise<KycRecord>;
+}
+
+/** Persistence for `KycRecord`, keyed by seller. `providedFields` is PII and
+ *  must be encrypted at rest by the implementation. */
+export interface KycRepository {
+  get(sellerId: string): Promise<KycRecord | null>;
+  save(record: KycRecord): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,6 +260,7 @@ export interface CreateLinkInput {
   reference: string;
   sellerId: string;
   destination: string;
+  muxedId: string | null;
   title: string;
   amount: string;
   asset: AssetRef;
@@ -136,6 +291,10 @@ export interface Seller {
 export interface SellerRepository {
   getDefault(): Promise<Seller>;
   findById(id: string): Promise<Seller | null>;
+  findByWallet(wallet: string): Promise<Seller | null>;
+  /** Wallet-native signup: SEP-10 proved control of `wallet`, so it IS the identity.
+   *  Idempotent — returns the existing seller if one is already registered for it. */
+  createIfAbsent(wallet: string): Promise<Seller>;
 }
 
 export interface Webhook {
@@ -167,4 +326,17 @@ export interface WatcherStateRepository {
   setCursor(account: string, cursor: string): Promise<void>;
   isProcessed(txHash: string): Promise<boolean>;
   markProcessed(txHash: string, linkId: string | null): Promise<void>;
+}
+
+/** Session-JWT revocation, keyed by the token's own `jti` — logout and
+ *  compromise both work by revoking a specific token id, not by invalidating
+ *  every session for a seller. */
+export interface TokenRevocationRepository {
+  /** `expiresAt` (epoch seconds) mirrors the token's own `exp`, so expired
+   *  revocation rows can be swept without ever affecting still-valid tokens. */
+  revoke(jti: string, expiresAt: number): Promise<void>;
+  isRevoked(jti: string): Promise<boolean>;
+  /** Deletes revocation rows whose token would already fail verification on
+   *  expiry alone — safe to call opportunistically, no correctness impact. */
+  sweepExpired(now: number): Promise<void>;
 }

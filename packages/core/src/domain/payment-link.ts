@@ -24,6 +24,10 @@ export interface PaymentLink {
   reference: string; // short, <=28 bytes — embedded as the Stellar MEMO_TEXT
   sellerId: string;
   destination: string; // seller's G-address (payments land here, non-custodial)
+  // SEP-23 muxed id embedded in the M-address handed to the payer when
+  // CORRELATION=muxed. Null in memo mode (the default) — the two correlation
+  // paths are independent, and a link only ever uses one.
+  muxedId: string | null;
   title: string;
   amount: string; // requested amount, canonical decimal string
   asset: AssetRef;

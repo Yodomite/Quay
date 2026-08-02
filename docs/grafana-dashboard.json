@@ -1,0 +1,148 @@
+{
+  "title": "Stellar Checkout — Operations",
+  "uid": "stellar-checkout-ops",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "utc",
+  "editable": true,
+  "time": { "from": "now-6h", "to": "now" },
+  "refresh": "30s",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Watcher lag",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "watcher_lag_seconds", "legendFormat": "lag", "refId": "A" }
+      ],
+      "description": "Seconds since the watcher's last completed poll tick. Should stay close to WATCH_POLL_MS/1000; a steady climb means the watcher is stuck or crashing."
+    },
+    {
+      "id": 2,
+      "title": "Payment-to-paid latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(payment_to_paid_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(payment_to_paid_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(payment_to_paid_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p99", "refId": "C" }
+      ],
+      "description": "Time from an on-chain payment's ledger close to its link flipping to paid."
+    },
+    {
+      "id": 3,
+      "title": "Payments matched by outcome (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum(rate(payments_matched_total[5m])) by (outcome)", "legendFormat": "{{outcome}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Link status transitions (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum(rate(link_status_transitions_total[5m])) by (to)", "legendFormat": "{{to}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Webhook attempts by result (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum(rate(webhook_attempts_total[5m])) by (result)", "legendFormat": "{{result}}", "refId": "A" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Webhook deliveries in flight",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "webhook_deliveries_in_flight", "legendFormat": "in flight", "refId": "A" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Anchor calls by method + status (rate)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+      "targets": [
+        { "expr": "sum(rate(anchor_calls_total[5m])) by (method, status)", "legendFormat": "{{method}} — {{status}}", "refId": "A" }
+      ],
+      "description": "method ~ SEP call: quote~SEP-38, initiate/status~SEP-6."
+    },
+    {
+      "id": 8,
+      "title": "Anchor call latency (p95 by method)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(anchor_call_duration_seconds_bucket[5m])) by (le, method))", "legendFormat": "{{method}} p95", "refId": "A" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Quote-to-settlement duration (p50 / p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 32 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum(rate(quote_to_settlement_duration_seconds_bucket{outcome=\"settled\"}[15m])) by (le))", "legendFormat": "p50 settled", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum(rate(quote_to_settlement_duration_seconds_bucket{outcome=\"settled\"}[15m])) by (le))", "legendFormat": "p95 settled", "refId": "B" }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Off-ramp circuit breaker state",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 32 },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "closed", "color": "green" }, "1": { "text": "half_open", "color": "orange" }, "2": { "text": "open", "color": "red" } } }
+          ]
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "offramp_circuit_breaker_state", "legendFormat": "state", "refId": "A" }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Watcher tick duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 40 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(watcher_tick_duration_seconds_bucket[5m])) by (le))", "legendFormat": "p95", "refId": "A" }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Accounts watched / pending cash-outs",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 40 },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "expr": "accounts_watched", "legendFormat": "accounts watched", "refId": "A" },
+        { "expr": "pending_cash_outs", "legendFormat": "pending cash-outs", "refId": "B" }
+      ]
+    }
+  ]
+}

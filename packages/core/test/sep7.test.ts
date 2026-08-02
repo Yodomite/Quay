@@ -43,6 +43,15 @@ describe("SEP-7 build-uri", () => {
     expect(() => buildSep7PayUri({ destination: "nope", asset: XLM })).toThrow();
   });
 
+  it("accepts an SEP-23 M-address destination with no memo", () => {
+    // 69-char M-address (SEP-23 muxed account); no real checksum needed here
+    // since build-uri only checks shape, not validity — StellarRail/StrKey do that.
+    const mAddress = "M" + "A".repeat(68);
+    const uri = buildSep7PayUri({ destination: mAddress, amount: "10", asset: XLM });
+    expect(uri).toContain(`destination=${mAddress}`);
+    expect(uri).not.toContain("memo=");
+  });
+
   it("rejects a MEMO_TEXT over 28 bytes", () => {
     expect(() =>
       buildSep7PayUri({ destination: DEST, asset: XLM, memo: "x".repeat(29) }),

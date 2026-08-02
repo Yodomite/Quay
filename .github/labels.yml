@@ -1,0 +1,98 @@
+# GitHub label taxonomy for Stellar Checkout.
+#
+# This file mirrors LABEL_DEFS in .github/create-issues.js, which is the
+# authoritative source — it is what actually creates these labels when the
+# backlog in ISSUES.md is pushed to GitHub. Keep the two in step: a name or
+# colour that drifts here produces a duplicate label on the repo.
+
+- name: "Stellar Wave"
+  color: "7B3FE4"
+  description: "Drips Wave Program - opt an issue in by applying this label"
+
+- name: "complexity:trivial"
+  color: "C2E0C6"
+  description: "100 points"
+
+- name: "complexity:medium"
+  color: "FBCA04"
+  description: "150 points"
+
+- name: "complexity:high"
+  color: "D93F0B"
+  description: "200 points"
+
+- name: "area:core"
+  color: "0E8A16"
+  description: "packages/core - domain, ports, status machine, matcher"
+
+- name: "area:stellar"
+  color: "1D76DB"
+  description: "packages/stellar - SEP-7 rail, Horizon watcher"
+
+- name: "area:offramp"
+  color: "5319E7"
+  description: "packages/offramp - anchors, SEP-1/6/10/12/24/38"
+
+- name: "area:api"
+  color: "006B75"
+  description: "apps/api - routes, worker, persistence, delivery"
+
+- name: "area:web"
+  color: "B60205"
+  description: "apps/web - dashboard, checkout, widget"
+
+- name: "area:auth"
+  color: "E99695"
+  description: "wallet-native auth + multi-tenancy"
+
+- name: "area:distribution"
+  color: "0075CA"
+  description: "npm packages, docs, grant framing, demo assets"
+
+- name: "area:ops"
+  color: "5B5B5B"
+  description: "CI, Docker, metrics, backups, uptime"
+
+- name: "type:bug"
+  color: "D73A4A"
+  description: ""
+
+- name: "type:feature"
+  color: "A2EEEF"
+  description: ""
+
+- name: "type:docs"
+  color: "0075CA"
+  description: ""
+
+- name: "type:test"
+  color: "BFE5BF"
+  description: ""
+
+- name: "type:refactor"
+  color: "FEF2C0"
+  description: ""
+
+- name: "type:perf"
+  color: "F9D0C4"
+  description: ""
+
+- name: "type:security"
+  color: "EE0701"
+  description: ""
+
+- name: "type:dx"
+  color: "C5DEF5"
+  description: ""
+
+- name: "type:ops"
+  color: "D4C5F9"
+  description: ""
+
+- name: "good-first-issue"
+  color: "7057FF"
+  description: "Self-contained, well-scoped, safe for newcomers"
+
+- name: "help-wanted"
+  color: "008672"
+  description: "Open for anyone, not newcomer-gated"

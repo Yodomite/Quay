@@ -13,6 +13,9 @@ export interface NormalizedPayment {
   asset: AssetRef;
   memo: string | null; // transaction memo (correlation id), if any
   memoType: string | null; // "text" | "id" | "hash" | "none" | ...
+  // SEP-23 muxed id decoded from the operation's `to_muxed_id`, when the payer
+  // sent to an M-address. Null for ordinary G-address payments.
+  toMuxedId: string | null;
   createdAt: string;
 }
 
@@ -24,15 +27,25 @@ export type MatchOutcome =
   | { kind: "unknown_reference" }; // memo present but no link with that reference
 
 /**
- * Match a single incoming payment against the link identified by its memo.
+ * Match a single incoming payment against its link, by memo reference or by
+ * SEP-23 muxed id — whichever correlation key the payment actually carries.
  *
- * `findLinkByReference` is injected (the adapter/service supplies a lookup),
- * keeping this function pure and unit-testable with no I/O.
+ * `findLinkByReference` / `findLinkByMuxedId` are injected (the adapter/service
+ * supplies the lookups), keeping this function pure and unit-testable with no I/O.
  */
 export function matchPayment(
   payment: NormalizedPayment,
   findLinkByReference: (reference: string) => PaymentLink | undefined,
+  findLinkByMuxedId?: (muxedId: string) => PaymentLink | undefined,
 ): MatchOutcome {
+  // Muxed-id correlation (SEP-23): the id lives inside the destination address
+  // itself, so it survives wallets that drop, mangle, or overwrite the memo.
+  // Tried first and independently of memo — a muxed link needs no memo at all.
+  if (payment.toMuxedId && findLinkByMuxedId) {
+    const link = findLinkByMuxedId(payment.toMuxedId);
+    if (link) return evaluate(payment, link);
+  }
+
   // Correlation is via MEMO_TEXT carrying the link reference.
   if (!payment.memo || payment.memoType === "none") {
     return { kind: "no_memo" };
@@ -43,6 +56,10 @@ export function matchPayment(
     return { kind: "unknown_reference" };
   }
 
+  return evaluate(payment, link);
+}
+
+function evaluate(payment: NormalizedPayment, link: PaymentLink): MatchOutcome {
   // Defense in depth: the value must actually be addressed to the link's destination.
   if (payment.to !== link.destination) {
     return { kind: "unknown_reference" };

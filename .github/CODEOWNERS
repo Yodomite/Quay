@@ -1,0 +1,22 @@
+# CODEOWNERS for Stellar Checkout
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-codeowners
+#
+# The repository is owned by a user account, not an organisation, so ownership
+# is assigned to the maintainer directly. Team handles (@org/team) only resolve
+# under an organisation — they would silently assign no reviewer at all.
+
+# Default owner for the entire repository
+*                       @determined-001
+
+# Component-specific ownership
+/packages/core/         @determined-001
+/packages/stellar/      @determined-001
+/packages/offramp/      @determined-001
+/apps/api/              @determined-001
+/apps/web/              @determined-001
+/docs/                  @determined-001
+/.github/               @determined-001
+
+# Review SLA:
+# All PRs assigned to code owners receive initial review feedback within
+# 48 hours (business days). See docs/TRIAGE.md.

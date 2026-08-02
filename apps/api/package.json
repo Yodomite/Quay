@@ -12,13 +12,14 @@
   },
   "dependencies": {
     "@checkout/core": "workspace:*",
-    "@checkout/stellar": "workspace:*",
     "@checkout/offramp": "workspace:*",
-    "@stellar/stellar-sdk": "16.0.1",
+    "@checkout/stellar": "workspace:*",
     "@hono/node-server": "2.0.5",
-    "hono": "4.12.26",
-    "drizzle-orm": "0.45.2",
     "@libsql/client": "0.17.4",
+    "@stellar/stellar-sdk": "16.0.1",
+    "drizzle-orm": "0.45.2",
+    "hono": "4.12.26",
+    "redis": "^6.1.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

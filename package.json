@@ -9,7 +9,11 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
-    "db:push": "pnpm --filter @checkout/api db:push"
+    "db:push": "pnpm --filter @checkout/api db:push",
+    "docs:status-diagram": "node scripts/gen-status-diagram.mjs",
+    "docs:check-status-diagram": "node scripts/gen-status-diagram.mjs --check",
+    "docs:check-domain-boundary": "node scripts/check-domain-boundary.mjs",
+    "sweep": "node scripts/uptime-check.mjs"
   },
   "devDependencies": {
     "turbo": "2.9.18",

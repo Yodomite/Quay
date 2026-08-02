@@ -20,3 +20,14 @@ export function newId(prefix: string): string {
 export function newReference(): string {
   return `pl_${base36(randomBytes(12))}`;
 }
+
+/**
+ * SEP-23 correlation id, embedded inside the destination M-address itself
+ * (CORRELATION=muxed). A uint64 as a decimal string; top bit cleared so it
+ * also fits a signed int64, avoiding sign edge cases in any downstream tooling.
+ */
+export function newMuxedId(): string {
+  const buf = randomBytes(8);
+  buf.writeUInt8(buf.readUInt8(0) & 0x7f, 0);
+  return BigInt(`0x${buf.toString("hex")}`).toString();
+}

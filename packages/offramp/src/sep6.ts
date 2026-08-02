@@ -10,27 +10,6 @@ export interface Sep6TransactionResult {
   message?: string;
 }
 
-/** SEP-12: minimal KYC so the anchor's SEP-6 withdraw will accept the request. */
-export async function putSep12Customer(
-  baseUrl: string,
-  jwt: string,
-  fields: Record<string, string>,
-): Promise<void> {
-  const res = await fetch(new URL("/sep12/customer", baseUrl), {
-    method: "PUT",
-    headers: { "content-type": "application/json", authorization: `Bearer ${jwt}` },
-    body: JSON.stringify({
-      first_name: fields.first_name ?? "Demo",
-      last_name: fields.last_name ?? "Seller",
-      email_address: fields.email_address ?? "demo-seller@example.com",
-      ...fields,
-    }),
-  });
-  if (!res.ok) {
-    throw new Error(`SEP-12 customer PUT failed: ${res.status} ${await res.text()}`);
-  }
-}
-
 /** SEP-6: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0006.md */
 export async function startSep6Withdraw(
   baseUrl: string,
