@@ -3,11 +3,11 @@
     "api": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-08-09T23:47:50.355Z",
+      "lastCheckedAt": "2026-08-10T00:37:25.199Z",
       "today": {
-        "date": "2026-08-09",
-        "up": 31,
-        "down": 3
+        "date": "2026-08-10",
+        "up": 1,
+        "down": 0
       },
       "history": [
         {
@@ -69,6 +69,11 @@
           "date": "2026-08-08",
           "up": 33,
           "down": 5
+        },
+        {
+          "date": "2026-08-09",
+          "up": 31,
+          "down": 3
         }
       ],
       "lastError": null
@@ -76,10 +81,10 @@
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-08-09T23:47:50.530Z",
+      "lastCheckedAt": "2026-08-10T00:37:25.365Z",
       "today": {
-        "date": "2026-08-09",
-        "up": 34,
+        "date": "2026-08-10",
+        "up": 1,
         "down": 0
       },
       "history": [
@@ -142,18 +147,23 @@
           "date": "2026-08-08",
           "up": 38,
           "down": 0
+        },
+        {
+          "date": "2026-08-09",
+          "up": 34,
+          "down": 0
         }
       ],
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 184,
+      "consecutiveFailures": 185,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-08-09T23:47:50.639Z",
+      "lastCheckedAt": "2026-08-10T00:37:25.449Z",
       "today": {
-        "date": "2026-08-09",
+        "date": "2026-08-10",
         "up": 0,
-        "down": 34
+        "down": 1
       },
       "history": [
         {
@@ -215,6 +225,11 @@
           "date": "2026-08-08",
           "up": 0,
           "down": 38
+        },
+        {
+          "date": "2026-08-09",
+          "up": 0,
+          "down": 34
         }
       ],
       "lastError": "POST https://quay-api.onrender.com/links -> HTTP 401 (expected 201)"
