@@ -1,13 +1,13 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 0,
-      "lastStatus": "up",
-      "lastCheckedAt": "2026-08-14T23:56:18.183Z",
+      "consecutiveFailures": 1,
+      "lastStatus": "down",
+      "lastCheckedAt": "2026-08-15T00:54:00.000Z",
       "today": {
-        "date": "2026-08-14",
-        "up": 24,
-        "down": 4
+        "date": "2026-08-15",
+        "up": 0,
+        "down": 1
       },
       "history": [
         {
@@ -94,17 +94,22 @@
           "date": "2026-08-13",
           "up": 14,
           "down": 9
+        },
+        {
+          "date": "2026-08-14",
+          "up": 24,
+          "down": 4
         }
       ],
-      "lastError": null
+      "lastError": "This operation was aborted"
     },
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-08-14T23:56:18.509Z",
+      "lastCheckedAt": "2026-08-15T00:54:00.269Z",
       "today": {
-        "date": "2026-08-14",
-        "up": 28,
+        "date": "2026-08-15",
+        "up": 1,
         "down": 0
       },
       "history": [
@@ -192,18 +197,23 @@
           "date": "2026-08-13",
           "up": 23,
           "down": 0
+        },
+        {
+          "date": "2026-08-14",
+          "up": 28,
+          "down": 0
         }
       ],
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 303,
+      "consecutiveFailures": 304,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-08-14T23:56:18.605Z",
+      "lastCheckedAt": "2026-08-15T00:54:15.271Z",
       "today": {
-        "date": "2026-08-14",
+        "date": "2026-08-15",
         "up": 0,
-        "down": 28
+        "down": 1
       },
       "history": [
         {
@@ -290,9 +300,14 @@
           "date": "2026-08-13",
           "up": 0,
           "down": 23
+        },
+        {
+          "date": "2026-08-14",
+          "up": 0,
+          "down": 28
         }
       ],
-      "lastError": "POST https://quay-api.onrender.com/links -> HTTP 401 (expected 201)"
+      "lastError": "This operation was aborted"
     }
   }
 }
