@@ -1,13 +1,13 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 0,
-      "lastStatus": "up",
-      "lastCheckedAt": "2026-08-20T16:17:38.012Z",
+      "consecutiveFailures": 1,
+      "lastStatus": "down",
+      "lastCheckedAt": "2026-08-20T16:54:11.849Z",
       "today": {
         "date": "2026-08-20",
         "up": 18,
-        "down": 8
+        "down": 9
       },
       "history": [
         {
@@ -126,15 +126,15 @@
           "down": 1
         }
       ],
-      "lastError": null
+      "lastError": "https://quay-api.onrender.com/health -> HTTP 503"
     },
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-08-20T16:17:38.157Z",
+      "lastCheckedAt": "2026-08-20T16:54:12.084Z",
       "today": {
         "date": "2026-08-20",
-        "up": 26,
+        "up": 27,
         "down": 0
       },
       "history": [
@@ -257,13 +257,13 @@
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 580,
+      "consecutiveFailures": 581,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-08-20T16:17:38.396Z",
+      "lastCheckedAt": "2026-08-20T16:54:12.173Z",
       "today": {
         "date": "2026-08-20",
         "up": 0,
-        "down": 26
+        "down": 27
       },
       "history": [
         {
@@ -382,7 +382,7 @@
           "down": 45
         }
       ],
-      "lastError": "POST https://quay-api.onrender.com/links -> HTTP 401 (expected 201)"
+      "lastError": "POST https://quay-api.onrender.com/links -> HTTP 503 (expected 201)"
     }
   }
 }
