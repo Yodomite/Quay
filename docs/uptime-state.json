@@ -1,13 +1,13 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 12,
+      "consecutiveFailures": 13,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-09-29T06:45:08.533Z",
+      "lastCheckedAt": "2026-09-29T13:21:11.458Z",
       "today": {
         "date": "2026-09-29",
         "up": 0,
-        "down": 2
+        "down": 3
       },
       "history": [
         {
@@ -326,15 +326,15 @@
           "down": 4
         }
       ],
-      "lastError": "This operation was aborted"
+      "lastError": "https://quay-api.onrender.com/health -> HTTP 503"
     },
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-09-29T06:45:08.756Z",
+      "lastCheckedAt": "2026-09-29T13:21:11.572Z",
       "today": {
         "date": "2026-09-29",
-        "up": 2,
+        "up": 3,
         "down": 0
       },
       "history": [
@@ -657,13 +657,13 @@
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 1067,
+      "consecutiveFailures": 1068,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-09-29T06:45:23.757Z",
+      "lastCheckedAt": "2026-09-29T13:21:21.692Z",
       "today": {
         "date": "2026-09-29",
         "up": 0,
-        "down": 2
+        "down": 3
       },
       "history": [
         {
@@ -982,7 +982,7 @@
           "down": 4
         }
       ],
-      "lastError": "This operation was aborted"
+      "lastError": "POST https://quay-api.onrender.com/links -> HTTP 503 (expected 201)"
     }
   }
 }
