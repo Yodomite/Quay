@@ -1,12 +1,12 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 1,
+      "consecutiveFailures": 2,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-10-06T21:15:53.811Z",
+      "lastCheckedAt": "2026-10-07T00:45:23.157Z",
       "today": {
-        "date": "2026-10-06",
-        "up": 3,
+        "date": "2026-10-07",
+        "up": 0,
         "down": 1
       },
       "history": [
@@ -359,6 +359,11 @@
           "date": "2026-10-05",
           "up": 3,
           "down": 1
+        },
+        {
+          "date": "2026-10-06",
+          "up": 3,
+          "down": 1
         }
       ],
       "lastError": "This operation was aborted"
@@ -366,10 +371,10 @@
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-10-06T21:15:54.090Z",
+      "lastCheckedAt": "2026-10-07T00:45:23.389Z",
       "today": {
-        "date": "2026-10-06",
-        "up": 4,
+        "date": "2026-10-07",
+        "up": 1,
         "down": 0
       },
       "history": [
@@ -722,18 +727,23 @@
           "date": "2026-10-05",
           "up": 4,
           "down": 0
+        },
+        {
+          "date": "2026-10-06",
+          "up": 4,
+          "down": 0
         }
       ],
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 1105,
+      "consecutiveFailures": 1106,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-10-06T21:16:09.091Z",
+      "lastCheckedAt": "2026-10-07T00:45:38.391Z",
       "today": {
-        "date": "2026-10-06",
+        "date": "2026-10-07",
         "up": 0,
-        "down": 4
+        "down": 1
       },
       "history": [
         {
@@ -1083,6 +1093,11 @@
         },
         {
           "date": "2026-10-05",
+          "up": 0,
+          "down": 4
+        },
+        {
+          "date": "2026-10-06",
           "up": 0,
           "down": 4
         }
