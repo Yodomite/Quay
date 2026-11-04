@@ -1,20 +1,15 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 121,
+      "consecutiveFailures": 122,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-11-03T23:34:32.360Z",
+      "lastCheckedAt": "2026-11-04T03:10:15.668Z",
       "today": {
-        "date": "2026-11-03",
+        "date": "2026-11-04",
         "up": 0,
-        "down": 4
+        "down": 1
       },
       "history": [
-        {
-          "date": "2026-08-05",
-          "up": 0,
-          "down": 13
-        },
         {
           "date": "2026-08-06",
           "up": 0,
@@ -459,6 +454,11 @@
           "date": "2026-11-02",
           "up": 0,
           "down": 4
+        },
+        {
+          "date": "2026-11-03",
+          "up": 0,
+          "down": 4
         }
       ],
       "lastError": "https://quay-api.onrender.com/health -> HTTP 503"
@@ -466,18 +466,13 @@
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-11-03T23:34:32.553Z",
+      "lastCheckedAt": "2026-11-04T03:10:15.936Z",
       "today": {
-        "date": "2026-11-03",
-        "up": 4,
+        "date": "2026-11-04",
+        "up": 1,
         "down": 0
       },
       "history": [
-        {
-          "date": "2026-08-05",
-          "up": 13,
-          "down": 0
-        },
         {
           "date": "2026-08-06",
           "up": 7,
@@ -922,25 +917,25 @@
           "date": "2026-11-02",
           "up": 4,
           "down": 0
+        },
+        {
+          "date": "2026-11-03",
+          "up": 4,
+          "down": 0
         }
       ],
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 1258,
+      "consecutiveFailures": 1259,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-11-03T23:34:32.661Z",
+      "lastCheckedAt": "2026-11-04T03:10:16.003Z",
       "today": {
-        "date": "2026-11-03",
+        "date": "2026-11-04",
         "up": 0,
-        "down": 4
+        "down": 1
       },
       "history": [
-        {
-          "date": "2026-08-05",
-          "up": 0,
-          "down": 13
-        },
         {
           "date": "2026-08-06",
           "up": 0,
@@ -1383,6 +1378,11 @@
         },
         {
           "date": "2026-11-02",
+          "up": 0,
+          "down": 4
+        },
+        {
+          "date": "2026-11-03",
           "up": 0,
           "down": 4
         }
