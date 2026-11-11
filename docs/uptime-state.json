@@ -1,20 +1,15 @@
 {
   "targets": {
     "api": {
-      "consecutiveFailures": 150,
+      "consecutiveFailures": 151,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-11-10T23:30:19.544Z",
+      "lastCheckedAt": "2026-11-11T02:56:25.879Z",
       "today": {
-        "date": "2026-11-10",
+        "date": "2026-11-11",
         "up": 0,
-        "down": 4
+        "down": 1
       },
       "history": [
-        {
-          "date": "2026-08-12",
-          "up": 13,
-          "down": 9
-        },
         {
           "date": "2026-08-13",
           "up": 14,
@@ -459,6 +454,11 @@
           "date": "2026-11-09",
           "up": 0,
           "down": 3
+        },
+        {
+          "date": "2026-11-10",
+          "up": 0,
+          "down": 4
         }
       ],
       "lastError": "https://quay-api.onrender.com/health -> HTTP 503"
@@ -466,18 +466,13 @@
     "web": {
       "consecutiveFailures": 0,
       "lastStatus": "up",
-      "lastCheckedAt": "2026-11-10T23:30:19.612Z",
+      "lastCheckedAt": "2026-11-11T02:56:25.998Z",
       "today": {
-        "date": "2026-11-10",
-        "up": 4,
+        "date": "2026-11-11",
+        "up": 1,
         "down": 0
       },
       "history": [
-        {
-          "date": "2026-08-12",
-          "up": 22,
-          "down": 0
-        },
         {
           "date": "2026-08-13",
           "up": 23,
@@ -922,25 +917,25 @@
           "date": "2026-11-09",
           "up": 3,
           "down": 0
+        },
+        {
+          "date": "2026-11-10",
+          "up": 4,
+          "down": 0
         }
       ],
       "lastError": null
     },
     "synthetic": {
-      "consecutiveFailures": 1287,
+      "consecutiveFailures": 1288,
       "lastStatus": "down",
-      "lastCheckedAt": "2026-11-10T23:30:19.903Z",
+      "lastCheckedAt": "2026-11-11T02:56:26.123Z",
       "today": {
-        "date": "2026-11-10",
+        "date": "2026-11-11",
         "up": 0,
-        "down": 4
+        "down": 1
       },
       "history": [
-        {
-          "date": "2026-08-12",
-          "up": 0,
-          "down": 22
-        },
         {
           "date": "2026-08-13",
           "up": 0,
@@ -1385,6 +1380,11 @@
           "date": "2026-11-09",
           "up": 0,
           "down": 3
+        },
+        {
+          "date": "2026-11-10",
+          "up": 0,
+          "down": 4
         }
       ],
       "lastError": "POST https://quay-api.onrender.com/links -> HTTP 503 (expected 201)"
